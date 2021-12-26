@@ -1,0 +1,233 @@
+
+FCEUd, Tutorial #1 (Hacking Character Stats)
+by Parasyte of DES (http://www.dragoneyestudios.net/)
+
+
+
+-===========---
+1) Warm-Up
+-===============---
+
+   Before beginning, it's best to know what is needed in order to use this
+document to it's full potential. First, you must know the very basics of
+assembly programming. (The basics are simple, understand each opcode addressing
+mode, and each opcode type) You must also be well versed in binary, including
+binary math. Overall, not much is needed to start using FCEUd.
+   For 6502 assembly documents and tutorials, check out Zophar's Domain and
+ROM Hacking.com at the URLs below. As an alternative, search for
+"6502 Assembly" in everyone's favorite search engine - Google.
+
+Things you'll need:
+ FCEUd (get from http://www.dragoneyestudios.net/)
+ Metroid ROM
+ 6502 ASM docs, available from:
+   http://www.zophar.net/
+   http://www.obelisk.demon.co.uk/6502/reference.html
+   http://www.romhacking.com/
+
+
+
+-===========---
+2) The FCEUd Debug Console
+-===============---
+
+   When you load up FCEUd, you'll be treated to the familiar interface of FCE
+Ultra 0.81. You will also find a "Debug" option in the "NES" menu. This option
+opens the FCEUd debug console. The console is made up of several groups. On the
+left, you have the verbose disassembler. In the center, you can find the
+program control buttons. Under the program control buttons is the PC control
+group. Under that you have the registers and stack dump. In the upper right
+corner of the console, you'll see the breakpoint group. Under the breakpoint
+group is the program status flags group.
+   The verbose disassembler is setup so it will do all addressing mode
+calculations for you, given the correct register settings. When you step
+through ASM, the disassembler will take the current register values and
+calculate everything "on-the-fly." This method of disassembly has it's
+disadvantages, but the advantages easily outweigh them. Due to the way which
+many games have been programmed, the only guarenteed correct addressing mode
+calculation will be performed on the opcode at the current PC. For example, if
+you halt the game on address $8096, then only the opcode at $8096 will be 100%
+correctly displayed as verbose. Other opcodes will be disassembled correctly.
+However, depending on the address mode they use, the extra information could be
+incorrect until they are ready to be executed.
+
+   Here is an example of how verbose information can help you. Take this random
+opcode:
+
+$E322:FD 85 51  SBC $5185,X @ $518A = #$8D
+
+   What you are seeing is the address first, followed by the data which makes
+up the following opcode. The opcode in this case is "SBC," and it's operands
+are "$5185,X." This is obviously an indexed addressing mode instruction. The
+next piece of information tells us the actual address which the instruction
+will operate on, followed by the data currently at that address. In this
+example, the value currently loaded into X is #$05. You could've esily added
+the 5 to the address in the operand, but the verbose information should have
+you worrying less about figuring out the address which each instruction is
+operating on.
+   Here is another example, one which would normally take you much longer to
+find the operating address:
+
+$E1D7:01 18     ORA ($18,X) @ $0300 = #$00
+
+   Once again, the disassembly follows the same format. The "@" character
+symbolizes the operating address, while the "=" character symbolizes the data
+at the operating address. In each case, the main purpose of this disassembly
+feature is to make it easier for you to hack.
+
+
+
+-===========---
+3) A Quick Description of Breakpoints
+-===============---
+
+   A breakpoint is a simple method of powerful debugging. Breakpoitns allow
+you to halt a program at any time during execution, and check out what it is
+doing. You don't exactly tell the program where to halt with breakpoints, you
+actually tell it why to halt. FCEUd supports the 3 most common types of
+breakpoints. The original breakpoint, which will halt when a given address is
+executed. And read and write watchpoints, which will halt when a given address
+is read or written to.
+
+   In the FCEUd console, breakpoints can be added, as well as deleted or edited
+in the breakpoint group. Clicking the Add button will open a new window which
+will allow you to set a single address, or an address range, as well as the
+breakpoint type. To set a single address, leave the 2nd address box blank. To
+set an address range, set the first address box to the start address, then set
+the second address box to the end address. You can enter up to 64 breakpoints.
+   The breakpoint selection box will allow you to select a breakpoint to delete
+or edit. Simply click on a breakpoint to select it. To enable and disable
+breakpoints, double click them in the breakpoint selection box.
+
+   An address or address range will be shown as a breakpoint in the selection
+box after being added. Changing the breakpoint type, or enabling\disabling a
+breakpoint will change the breakpoint flags, displayed directly after the
+breakpoint address or address range. The flags are listed as follows: "ERWX."
+"E" means the breakpoint is enabled, "R" means the breakpoint is set for reads
+"W" means the breakpoint is set for writes, and "X" means the breakpoint is set
+for executions. When a flag is disabled, it is replaced with a hyphen.
+
+
+
+-===========---
+4) Program and Disassembler Control
+-===============---
+
+   The program control buttons will allow you to control how the game is run.
+When "Run" is pushed, the game will run like normal until it is halted. (either
+by you, or by a breakpoint) The "Step Into" button will systematically run a
+single opcode when pushed. This is the button which you use when you want to
+move slowly through code to precisely watch how it is working. The "Step Over"
+button works the same as Step Into, with the exception that it will 'step over'
+sub routines. Stepping over will work exactly like Step Into until you come
+across a JSR opcode. When you push Step Over on the JSR, all code inside that
+subroutine will be executed as normal until the subroutine exits. (or until you
+or a breakpoint halts execution) Due to the way which some games have been
+programmed, not all subroutines will exit as Step Over expects. This may lead
+to some strange events, such as the subroutine never returning, or the return
+address may not be the expect address right after the calling JSR.
+   The "Step Out" button will litterally step out of the current subroutine to
+the calling code. This is useful in many cases which may not be apparent at
+this point in time.
+
+   The disassembler controls allow you to quickly navigate NES memory through
+the disassembler. You can Seek the disassembler to any address quickly, as well
+as seeking directly to the PC incase you've wondered off and need a quick way
+back.
+
+
+
+-===========---
+5) Hacking That Bad Chicken
+-===============---
+
+   For this first tutorial, we're going to change Samus' jump height in
+Metroid. This is a bit easier than it sounds. The first thing we need is a RAM
+address to work with. Since we're messing with jump height, let's use an
+address that deals with jumping! I loaded NESten (currently has a better cheat
+search than FCEUd :P) and did a simple cheat search. While Samus was on the
+ground, not moving, the value was always equal to the last. I would then jump,
+and search for "changed" values while Samus was in the air. And then search for
+"changed" values when she was back on the ground. I repeated this several times
+until I ended up with three addresses: $01EE, $01F0, $0312. I know that any
+address in the range between $0100 - $01FF is stack space, so those get
+ommited. This left me with just one address - $0312.
+
+   Now that we have an address to work with, load Metroid in FCEUd and open the
+debug console. Add a new breakpoint of type "write" with that address. The game
+will happily halt as soon as that address is written to. Push Run several times
+to make sure no other opcodes write to the address. Here's the address which
+snapped the debug console for me:
+
+$E3AE:8D 12 03  STA $0312 = #$00
+
+   It's just a simple STA $0312, big surprise. Now I scroll up a bit in the
+disassembler to find what is setting A. Here's what I find:
+
+$E3A7:AD 12 03  LDA $0312 = #$00
+$E3AA:18        CLC
+$E3AB:6D 14 03  ADC $0314 = #$00
+$E3AE:8D 12 03  STA $0312 = #$00
+
+   A value is loaded from our address, cool, and then the value at $0314 is
+added to it. The sum is placed into our address. So now, we need to find out
+what is setting address $0314. First disable the current breakpoint, then add a
+new one of type "write" on address $0314. Press Run and the game will continue
+running like normal. Press the jump button, and AHA! The console snaps. Scroll
+up some in the disassembler and check out what's going on...
+
+$CFF3:A0 18     LDY #$18
+$CFF5:AD 78 68  LDA $6878 = #$00
+$CFF8:29 02     AND #$02
+$CFFA:F0 02     BEQ $CFFE
+$CFFC:A0 12     LDY #$12
+$CFFE:8C 14 03  STY $0314 = #$00
+
+   The STY is what snapped the debugger, and those LDYs tells us what value
+gets stored to that address! LDY #$12, eh? Let's just change that! To find
+this ASM in the ROM, copy down the data which the disassembler shows:
+A0 12 8C 14 03. Hex search for this data in the ROM file. I found it at file
+address $1D00C. Now All I have to do is change that $12 to something else,
+like $15. Save the file and test the hack. Does it work? Well, yes and no.
+   If you're up on your Metroid cheating, you'll know what address $6878 is.
+It's the address which contains the items Samus currently has. The AND #$02
+is checking for the high jump boots! The BEQ will skip that second LDY if
+you do not have the high jump boots. So, that means you have two different
+values for jump height, depending on whether you have high jump boots or not.
+
+   The first LDY sets the jump height when you do not have high jump boots.
+The second LDY sets the jump height when you do have the high jump boots. And
+as you may have guessed, the lower the value, the higher Samus will jump.
+
+
+
+-===========---
+6) Some Conciderations
+-===============---
+
+   This is only the first of a proposed series of tutorials for FCEUd. All
+tutorials will be readily available from DES (http://dragoneye.cg-games.net/)
+as they become available. Each tutorial will focus on certain key aspects of
+using FCEUd, and 6502 ASM hacking in general.
+   It's important to remember that not every game will work like Metroid, and
+not every hack will be the same as the last. If you do not keep this in mind,
+you may become frustrated when a game does something unexpected. And we all
+know that frustration is the hackers worst enemy.
+
+
+
+-===========---
+7) Legal Information
+-===============---
+
+   This document is Copyright 2003 Parasyte\Dragon Eye Studios. This doument
+may not be modified in any way, in part or whole without permission of the
+author. Parasyte and Dragon Eye Studios are in no way affiliated with Nintendo.
+Metroid, Samus, NES and Nintendo are registered trademarks of Nintendo.
+   Parasyte and Dragon Eye Studios are not responsible for how you use the
+information contained in this document. We are not responsible for the fact
+that it may eat your homework and your dog. Please brush your teeth.
+
+
+
+EOF
